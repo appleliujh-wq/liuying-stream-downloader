@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>流影 — 把流动的影像，收进匣中</title>
+  <meta name="description" content="本地网页工具：从 YouTube、哔哩哔哩、抖音、Twitter/X 解析并保存视频到你的电脑。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23110e0a'/%3E%3Cpath d='M18 44c10-2 16-12 28-28' stroke='%23e4a14b' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='18' r='4' fill='%23e4a14b'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="glow glow-a" aria-hidden="true"></div>
+  <div class="glow glow-b" aria-hidden="true"></div>
+
+  <header class="top">
+    <a class="brand" href="/" aria-label="流影 首页">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="28" height="28">
+          <path d="M8 36c10-3 16-14 32-28" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+          <circle cx="40" cy="8" r="3.2" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="name">流影</span>
+        <span class="ename">LIÚ YǏNG</span>
+      </span>
+    </a>
+    <div class="top-right">
+      <p class="tagline">把流动的影像，收进自己的匣中</p>
+      <div class="auth-wrap" id="auth-wrap">
+        <button type="button" id="auth-toggle" class="auth-toggle is-empty" aria-expanded="false" aria-controls="auth-panel">
+          <span class="auth-kicker">登录态</span>
+          <span id="auth-status-label">未导入</span>
+        </button>
+        <div id="auth-panel" class="auth-panel glass" hidden role="dialog" aria-labelledby="auth-panel-title">
+          <h3 id="auth-panel-title">可选：导入你自己的登录态</h3>
+          <p class="auth-help">抖音公开视频会自动用本地临时 Chrome 解析，不需要复制 cookies。这里的导入主要给 YouTube 年龄限制等需要账号的内容使用。</p>
+
+          <label class="auth-label">上传 cookies.txt（推荐）</label>
+          <div class="auth-row">
+            <label class="file-btn ghost">
+              选择文件
+              <input type="file" id="auth-file" accept=".txt,text/plain" hidden />
+            </label>
+            <button type="button" id="auth-upload" class="ghost">导入</button>
+          </div>
+          <p id="auth-file-name" class="hint">尚未选择文件</p>
+
+          <label class="auth-label" for="auth-browser">读取本机浏览器</label>
+          <div class="auth-row">
+            <select id="auth-browser">
+              <option value="chrome">Chrome</option>
+              <option value="chromium">Chromium</option>
+              <option value="firefox">Firefox</option>
+              <option value="edge">Edge</option>
+              <option value="brave">Brave</option>
+            </select>
+            <button type="button" id="auth-save-browser" class="ghost">保存</button>
+          </div>
+          <p class="hint">可选。抖音普通公开视频不需要设置这里。</p>
+
+          <div class="auth-row auth-row-end">
+            <button type="button" id="auth-clear" class="ghost danger">清除登录态</button>
+          </div>
+          <p id="auth-msg" class="hint" hidden></p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="ffmpeg-banner" class="banner" hidden>
+    <strong>未检测到 ffmpeg。</strong>
+    视频与音频的合并将不可用，请安装后重启本应用。仍可尝试下载「仅音频」或平台已封装好的成品文件。
+  </div>
+
+  <main class="layout">
+    <aside class="sidebar glass">
+      <div class="sidebar-head">
+        <h2>最近任务</h2>
+        <button type="button" id="refresh-jobs" class="ghost" title="刷新">刷新</button>
+      </div>
+      <ul id="job-list" class="job-list"></ul>
+      <div id="job-empty" class="empty">
+        <span class="empty-mark" aria-hidden="true">◇</span>
+        <p>匣中尚空。<br />解析一条链接，影就会落在这里。</p>
+      </div>
+      <section class="creator-card" aria-label="作者联系方式">
+        <p class="creator-kicker">独立工具 · 联系作者</p>
+        <h3>想交流或了解更多？</h3>
+        <div class="creator-wechat">
+          <span class="creator-label">我的微信号是</span>
+          <code>liu18530971787</code>
+          <button type="button" id="creator-copy" class="creator-copy">复制</button>
+        </div>
+        <p id="creator-toast" class="creator-toast" hidden>微信号已复制</p>
+        <a class="creator-link" href="https://product-launch-studio.product-launch-studio.workers.dev/" target="_blank" rel="noopener noreferrer">
+          <span>访问我的个人网站</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <form id="parse-form" class="composer glass" autocomplete="off">
+        <label class="sr-only" for="url">视频链接</label>
+        <div class="url-row">
+          <input id="url" name="url" type="text" inputmode="url" spellcheck="false"
+                 placeholder="粘贴视频链接，或整段抖音分享文案" />
+          <button type="submit" id="parse-btn" class="primary">解析</button>
+        </div>
+        <div class="meta-row">
+          <div id="platform-chip" class="platform-chip" hidden></div>
+          <p id="parse-hint" class="hint">抖音请点分享 → 复制链接（要有 v.douyin.com）。解析时会自动调用本地临时浏览器，不用手动复制 Cookie。</p>
+        </div>
+        <p id="parse-error" class="error" hidden></p>
+        <p id="auth-help-inline" class="auth-help inline" hidden>抖音：用 Chrome 打开一次 douyin.com（不用登录），完全退出 Chrome，再选择 Chrome 保存。YouTube 年龄限制才需要已登录账号。</p>
+      </form>
+
+      <article id="info-card" class="info-card glass" hidden>
+        <div class="thumb-wrap">
+          <img id="thumb" alt="视频封面" />
+          <span class="play-frame" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="42" height="42">
+              <circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M26 20 L26 44 L46 32 Z" fill="currentColor"/>
+            </svg>
+          </span>
+        </div>
+        <div class="info-body">
+          <div class="info-kicker">
+            <span id="info-platform" class="platform-chip"></span>
+            <span id="info-duration" class="muted"></span>
+          </div>
+          <h2 id="info-title"></h2>
+          <p id="info-uploader" class="uploader"></p>
+          <fieldset class="qualities">
+            <legend>选择清晰度</legend>
+            <div id="quality-list" class="chips"></div>
+          </fieldset>
+          <div class="info-actions">
+            <button type="button" id="download-btn" class="primary wide">开始下载</button>
+            <p id="dl-hint" class="hint"></p>
+          </div>
+        </div>
+      </article>
+
+      <div id="progress-card" class="progress-card glass" hidden>
+        <div class="progress-head">
+          <span id="progress-status">下载中</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="bar" aria-hidden="true"><i id="progress-bar"></i></div>
+        <div class="progress-meta">
+          <span id="progress-title"></span>
+          <span id="progress-speed"></span>
+          <span id="progress-eta"></span>
+        </div>
+      </div>
+
+      <div id="done-card" class="done-card glass" hidden>
+        <p class="done-kicker">已落入匣中</p>
+        <h3 id="done-name"></h3>
+        <p id="done-size" class="muted"></p>
+        <div class="done-actions">
+          <button type="button" id="copy-path" class="primary">复制路径</button>
+          <a id="save-file" class="ghost-link" href="#" download>通过浏览器保存</a>
+        </div>
+        <p id="done-path" class="path"></p>
+        <p id="copy-toast" class="hint" hidden>已复制到剪贴板</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>仅下载你有权保存的内容。这是运行在你自己电脑上的个人工具，请遵守各平台服务条款与当地法律。</p>
+    <p class="foot-meta">流影 · 本地网页应用 · 不上传、不追踪</p>
+  </footer>
+
+  <script src="/static/app.js?v=2" defer></script>
+</body>
+</html>
+
