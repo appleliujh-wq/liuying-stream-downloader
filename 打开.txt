@@ -1,0 +1,23 @@
+怎么打开流影
+============
+
+1. 解压这个 zip，不要在压缩包里面直接双击。
+2. 电脑需要先装 Python 3.10+（https://www.python.org/downloads/ ，安装时勾选 Add python.exe to PATH）。
+3. Windows：双击 start.bat
+   Mac / Linux：在终端里进入这个文件夹，执行 ./start.sh
+4. 会弹出黑窗口，并自动打开浏览器 http://127.0.0.1:8787
+   黑窗口不要关。
+
+如果双击 start.bat 一闪就没了：
+- 多半是没装 Python，或没勾选 PATH。装完重开一个终端再试。
+
+抖音视频怎么下：
+- 打开视频 → 分享 → 复制链接
+- 链接里要有 v.douyin.com
+- 只有口令（那种 xxx:/ 加标题）解析不了
+
+抖音解析失败（Fresh cookies / 已隐藏）时：
+1. 用 Chrome 打开 https://www.douyin.com 随便逛一下（不用登录）
+2. 完全退出 Chrome（托盘里也要退）
+3. 打开流影，右上角「登录态」选 Chrome，点保存
+4. 再把 v.douyin.com 链接贴进去解析
